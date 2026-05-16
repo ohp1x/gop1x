@@ -38,3 +38,27 @@ func TestMockManager_IsInstalled(t *testing.T) {
 	assert.True(t, m.IsInstalled("fzf"))
 	assert.False(t, m.IsInstalled("ripgrep"))
 }
+
+// Brew tests
+func TestBrew_Name(t *testing.T) {
+	b := &Brew{}
+	assert.Equal(t, "brew", b.Name())
+}
+
+func TestBrew_Install_EmptyList(t *testing.T) {
+	b := &Brew{}
+	err := b.Install()
+	require.NoError(t, err)
+}
+
+// Apt tests
+func TestApt_Name(t *testing.T) {
+	a := &Apt{}
+	assert.Equal(t, "apt", a.Name())
+}
+
+func TestApt_Install_EmptyList(t *testing.T) {
+	a := &Apt{}
+	err := a.Install()
+	require.NoError(t, err)
+}

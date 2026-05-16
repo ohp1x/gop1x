@@ -1,6 +1,10 @@
 package pkg
 
-import "runtime"
+import (
+	"os"
+	"os/exec"
+	"runtime"
+)
 
 type PackageManager interface {
 	Name() string
@@ -22,14 +26,50 @@ func NewManager() PackageManager {
 
 type Brew struct{}
 
-func (b *Brew) Name() string              { return "brew" }
-func (b *Brew) IsAvailable() bool          { return false } // TODO: check PATH
-func (b *Brew) Install(pkgs ...string) error { return nil } // TODO: implement
-func (b *Brew) IsInstalled(pkg string) bool  { return false } // TODO: implement
+func (b *Brew) Name() string { return "brew" }
+
+func (b *Brew) IsAvailable() bool {
+	_, err := exec.LookPath("brew")
+	return err == nil
+}
+
+func (b *Brew) Install(pkgs ...string) error {
+	if len(pkgs) == 0 {
+		return nil
+	}
+	args := append([]string{"install"}, pkgs...)
+	cmd := exec.Command("brew", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func (b *Brew) IsInstalled(pkg string) bool {
+	cmd := exec.Command("brew", "list", pkg)
+	return cmd.Run() == nil
+}
 
 type Apt struct{}
 
-func (a *Apt) Name() string              { return "apt" }
-func (a *Apt) IsAvailable() bool          { return false } // TODO: check PATH
-func (a *Apt) Install(pkgs ...string) error { return nil } // TODO: implement
-func (a *Apt) IsInstalled(pkg string) bool  { return false } // TODO: implement
+func (a *Apt) Name() string { return "apt" }
+
+func (a *Apt) IsAvailable() bool {
+	_, err := exec.LookPath("apt")
+	return err == nil
+}
+
+func (a *Apt) Install(pkgs ...string) error {
+	if len(pkgs) == 0 {
+		return nil
+	}
+	args := append([]string{"install", "-y"}, pkgs...)
+	cmd := exec.Command("apt", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func (a *Apt) IsInstalled(pkg string) bool {
+	cmd := exec.Command("dpkg", "-l", pkg)
+	return cmd.Run() == nil
+}
