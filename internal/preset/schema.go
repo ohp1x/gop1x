@@ -36,8 +36,10 @@ type Output struct {
 }
 
 type Hooks struct {
-	PreInstall  string `yaml:"pre_install"`
-	PostInstall string `yaml:"post_install"`
+	PreInstall     string `yaml:"pre_install"`
+	PostInstall    string `yaml:"post_install"`
+	PreUninstall   string `yaml:"pre_uninstall"`
+	PostUninstall  string `yaml:"post_uninstall"`
 }
 
 type TemplateData struct {
