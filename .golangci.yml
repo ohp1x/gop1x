@@ -1,0 +1,30 @@
+run:
+  timeout: 3m
+
+linters:
+  disable-all: true
+  enable:
+    - forbidigo
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+
+linters-settings:
+  forbidigo:
+    forbid:
+      - p: ^fmt\.Print(ln|f)?$
+        msg: "use internal/ui/log instead of fmt.Print* for user-facing output"
+      - p: ^fmt\.Fprint(ln|f)?$
+        msg: "use internal/ui/log instead of fmt.Fprint* for user-facing output"
+    analyze-types: true
+
+issues:
+  exclude-rules:
+    - path: internal/ui/
+      linters:
+        - forbidigo
+    - path: _test\.go$
+      linters:
+        - forbidigo

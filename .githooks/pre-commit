@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# gop1x pre-commit hook — runs from repo root after `make hooks`.
+# Enable: `make hooks` (sets core.hooksPath=.githooks)
+
+set -euo pipefail
+
+staged_go=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.go$' || true)
+if [ -z "$staged_go" ]; then
+  exit 0
+fi
+
+echo "[pre-commit] go vet ./..."
+go vet ./...
+
+if command -v golangci-lint >/dev/null 2>&1; then
+  echo "[pre-commit] golangci-lint run"
+  golangci-lint run
+else
+  echo "[pre-commit] golangci-lint not installed — skipped (install: https://golangci-lint.run/)"
+fi
+
+echo "[pre-commit] go test -race ./..."
+go test -race ./...

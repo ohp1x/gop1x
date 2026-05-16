@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/ohp1x/gop1x/internal/ui"
 )
 
 var (
@@ -23,7 +24,7 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		ui.Error(err.Error())
 		os.Exit(1)
 	}
 }
