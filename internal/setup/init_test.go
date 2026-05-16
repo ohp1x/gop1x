@@ -83,7 +83,7 @@ func TestRun_AlreadyInitialized_WithForce(t *testing.T) {
 	require.NoError(t, err)
 
 	// Old marker should be in backup
-	backups, err := filepath.Glob(homeDir + ".backup-*")
+	backups, _ := filepath.Glob(homeDir + ".backup-*")
 	assert.GreaterOrEqual(t, len(backups), 1)
 
 	// New home should not have marker
