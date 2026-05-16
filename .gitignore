@@ -1,0 +1,6 @@
+gop1x
+dist/
+*.exe
+*.test
+*.out
+.DS_Store
