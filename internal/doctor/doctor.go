@@ -97,7 +97,7 @@ func checkPackageManager(report *Report) {
 	if pm == nil {
 		report.Issues = append(report.Issues, Issue{
 			Level:   "warning",
-			Message: fmt.Sprintf("Package manager not available for this OS"),
+			Message: "Package manager not available for this OS",
 		})
 		return
 	}

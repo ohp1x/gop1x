@@ -1,16 +1,16 @@
 package cmd
 
 import (
-	"fmt"
-
+	"github.com/ohp1x/gop1x/internal/ui"
 	"github.com/spf13/cobra"
 )
 
 var rmCmd = &cobra.Command{
-	Use:   "rm",
-	Short: "rm command",
+	Use:   "rm [preset]",
+	Short: "Remove an installed preset",
+	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("not implemented yet")
+		ui.Warn("not implemented yet")
 	},
 }
 

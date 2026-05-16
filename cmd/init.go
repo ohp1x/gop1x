@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/ohp1x/gop1x/internal/setup"
+	"github.com/ohp1x/gop1x/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +26,7 @@ var initCmd = &cobra.Command{
 		}
 
 		if err := setup.Run(opts); err != nil {
-			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
+			ui.Errorf("%v", err)
 			os.Exit(1)
 		}
 	},

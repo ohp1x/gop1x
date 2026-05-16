@@ -1,16 +1,15 @@
 package cmd
 
 import (
-	"fmt"
-
+	"github.com/ohp1x/gop1x/internal/ui"
 	"github.com/spf13/cobra"
 )
 
 var presetCmd = &cobra.Command{
-	Use:   "preset",
-	Short: "preset command",
+	Use:   "preset [command]",
+	Short: "Manage presets (list, info, search)",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("not implemented yet")
+		ui.Warn("not implemented yet")
 	},
 }
 

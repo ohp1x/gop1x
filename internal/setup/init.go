@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ohp1x/gop1x/internal/config"
+	"github.com/ohp1x/gop1x/internal/ui"
 	"gopkg.in/yaml.v3"
 )
 
@@ -194,9 +195,8 @@ func printNextSteps(homeDir string) {
 		initFile = "init.bash"
 	}
 
-	fmt.Printf(`
-✓ Initialized gop1x at %s
-
+	ui.Ok("Initialized gop1x at " + homeDir)
+	ui.Printf(`
 Next steps:
 1. Add to your ~/%s:
    source $HOME/.ohp1x/%s
@@ -207,5 +207,5 @@ Next steps:
 3. View all presets:
    gop1x status
 
-`, homeDir, shellRC, initFile)
+`, shellRC, initFile)
 }

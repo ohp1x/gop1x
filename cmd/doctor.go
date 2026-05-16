@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/ohp1x/gop1x/internal/doctor"
+	"github.com/ohp1x/gop1x/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -16,18 +16,19 @@ var doctorCmd = &cobra.Command{
 		report := doctor.Run()
 
 		if len(report.Issues) == 0 {
-			fmt.Println("✓ All checks passed")
+			ui.Ok("All checks passed")
 			os.Exit(0)
 		}
 
 		for _, issue := range report.Issues {
-			prefix := "ℹ"
-			if issue.Level == "warning" {
-				prefix = "⚠"
-			} else if issue.Level == "error" {
-				prefix = "✗"
+			switch issue.Level {
+			case "error":
+				ui.Error(issue.Message)
+			case "warning":
+				ui.Warn(issue.Message)
+			default:
+				ui.Info(issue.Message)
 			}
-			fmt.Printf("%s %s\n", prefix, issue.Message)
 		}
 
 		if !report.OK {

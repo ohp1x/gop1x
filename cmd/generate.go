@@ -1,16 +1,15 @@
 package cmd
 
 import (
-	"fmt"
-
+	"github.com/ohp1x/gop1x/internal/ui"
 	"github.com/spf13/cobra"
 )
 
 var generateCmd = &cobra.Command{
 	Use:   "generate",
-	Short: "generate command",
+	Short: "Regenerate output files from installed presets",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("not implemented yet")
+		ui.Warn("not implemented yet")
 	},
 }
 
