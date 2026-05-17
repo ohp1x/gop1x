@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -130,8 +132,21 @@ func (r *Runner) RunWithSpinner(label, name string, args ...string) *Result {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		close(done)
+		res.ExitCode = 1
+		res.Err = fmt.Errorf("%s: %w", name, err)
+		return res
+	}
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		close(done)
+		res.ExitCode = 1
+		res.Err = fmt.Errorf("%s: %w", name, err)
+		return res
+	}
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -145,7 +160,21 @@ func (r *Runner) RunWithSpinner(label, name string, args ...string) *Result {
 		return res
 	}
 
-	go func() { errCh <- cmd.Wait() }()
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		io.Copy(&stdout, stdoutPipe)
+	}()
+	go func() {
+		defer wg.Done()
+		io.Copy(&stderr, stderrPipe)
+	}()
+
+	go func() {
+		wg.Wait()
+		errCh <- cmd.Wait()
+	}()
 
 	select {
 	case err := <-errCh:
