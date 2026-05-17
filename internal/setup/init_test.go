@@ -2,6 +2,7 @@ package setup
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -182,4 +183,57 @@ func TestWriteGitignore(t *testing.T) {
 	content, err := os.ReadFile(gitignorePath)
 	require.NoError(t, err)
 	assert.Equal(t, "local/\n", string(content))
+}
+
+func TestRun_InitFromURL(t *testing.T) {
+	tmpdir := t.TempDir()
+	homeDir := filepath.Join(tmpdir, "ohp1x_home")
+	t.Setenv("OHP1X_HOME", homeDir)
+
+	// Create a temporary git repo to clone from
+	sourceDir := filepath.Join(tmpdir, "source_repo")
+	err := os.MkdirAll(sourceDir, 0755)
+	require.NoError(t, err)
+
+	// Initialize source repo
+	cmd := exec.Command("git", "init")
+	cmd.Dir = sourceDir
+	err = cmd.Run()
+	require.NoError(t, err)
+
+	// Create a test file in source repo
+	testFile := filepath.Join(sourceDir, "test.txt")
+	err = os.WriteFile(testFile, []byte("test content"), 0644)
+	require.NoError(t, err)
+
+	// Commit the test file
+	cmd = exec.Command("git", "add", "test.txt")
+	cmd.Dir = sourceDir
+	_ = cmd.Run()
+
+	cmd = exec.Command("git", "config", "user.email", "test@example.com")
+	cmd.Dir = sourceDir
+	_ = cmd.Run()
+
+	cmd = exec.Command("git", "config", "user.name", "Test User")
+	cmd.Dir = sourceDir
+	_ = cmd.Run()
+
+	cmd = exec.Command("git", "commit", "-m", "initial commit")
+	cmd.Dir = sourceDir
+	_ = cmd.Run()
+
+	// Clone from source repo
+	opts := InitOptions{FromURL: sourceDir}
+	err = Run(opts)
+	require.NoError(t, err)
+
+	// Verify cloned repo exists
+	assert.DirExists(t, homeDir)
+	assert.FileExists(t, filepath.Join(homeDir, "test.txt"))
+	assert.DirExists(t, filepath.Join(homeDir, ".git"))
+
+	// Verify init scripts were generated
+	assert.FileExists(t, filepath.Join(homeDir, "init.zsh"))
+	assert.FileExists(t, filepath.Join(homeDir, "init.bash"))
 }

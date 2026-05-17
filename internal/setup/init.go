@@ -41,6 +41,22 @@ func Run(opts InitOptions) error {
 		}
 	}
 
+	// If --from is specified, clone the repo
+	if opts.FromURL != "" {
+		if err := cloneFromURL(opts.FromURL, homeDir); err != nil {
+			return fmt.Errorf("failed to clone from %s: %w", opts.FromURL, err)
+		}
+		// Post-clone setup
+		if err := setupGitConfig(homeDir); err != nil {
+			return fmt.Errorf("failed to setup git config: %w", err)
+		}
+		if err := generateInitScripts(homeDir); err != nil {
+			return fmt.Errorf("failed to generate init scripts: %w", err)
+		}
+		printNextSteps(homeDir)
+		return nil
+	}
+
 	// Create directory structure
 	if err := createDirectories(homeDir); err != nil {
 		return fmt.Errorf("failed to create directories: %w", err)
@@ -167,8 +183,34 @@ func initGitRepo(homeDir string) error {
 		return fmt.Errorf("failed to run git init: %w", err)
 	}
 
-	// Set initial git config for this repo
-	cmd = exec.Command("git", "config", "user.email", "gop1x@local")
+	return setupGitConfig(homeDir)
+}
+
+func backupExisting(homeDir string) error {
+	timestamp := time.Now().Format("20060102-150405")
+	backupDir := homeDir + ".backup-" + timestamp
+	return os.Rename(homeDir, backupDir)
+}
+
+func cloneFromURL(url, homeDir string) error {
+	// Remove existing directory if it exists
+	if _, err := os.Stat(homeDir); err == nil {
+		if err := os.RemoveAll(homeDir); err != nil {
+			return fmt.Errorf("failed to remove existing directory: %w", err)
+		}
+	}
+
+	// Clone the repository
+	cmd := exec.Command("git", "clone", url, homeDir)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to clone repository: %w", err)
+	}
+
+	return nil
+}
+
+func setupGitConfig(homeDir string) error {
+	cmd := exec.Command("git", "config", "user.email", "gop1x@local")
 	cmd.Dir = homeDir
 	_ = cmd.Run() // best effort
 
@@ -177,12 +219,6 @@ func initGitRepo(homeDir string) error {
 	_ = cmd.Run() // best effort
 
 	return nil
-}
-
-func backupExisting(homeDir string) error {
-	timestamp := time.Now().Format("20060102-150405")
-	backupDir := homeDir + ".backup-" + timestamp
-	return os.Rename(homeDir, backupDir)
 }
 
 func printNextSteps(homeDir string) {
