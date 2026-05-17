@@ -2,7 +2,6 @@ package install
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/ohp1x/gop1x/internal/config"
@@ -10,7 +9,6 @@ import (
 	"github.com/ohp1x/gop1x/internal/preset"
 	"github.com/ohp1x/gop1x/internal/state"
 	"github.com/ohp1x/gop1x/internal/ui"
-	"gopkg.in/yaml.v3"
 )
 
 type SyncOptions struct {
@@ -27,13 +25,10 @@ type SyncPlan struct {
 	Packages  []string
 }
 
-type manifest struct {
-	Presets      []string                     `yaml:"presets"`
-	PresetConfig map[string]map[string]string `yaml:"preset_config"`
-}
+type manifest = config.Manifest
 
 func RunSync(opts SyncOptions) error {
-	m, err := readManifest()
+	m, err := config.ReadManifest()
 	if err != nil {
 		return err
 	}
@@ -247,19 +242,3 @@ func displaySyncPlan(plan *SyncPlan) {
 	ui.Print("")
 }
 
-func readManifest() (*manifest, error) {
-	manifestPath := filepath.Join(config.Home(), "ohp1x.yaml")
-	data, err := os.ReadFile(manifestPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("manifest not found: %s (run 'gop1x init' first)", manifestPath)
-		}
-		return nil, fmt.Errorf("read manifest: %w", err)
-	}
-
-	var m manifest
-	if err := yaml.Unmarshal(data, &m); err != nil {
-		return nil, fmt.Errorf("parse manifest: %w", err)
-	}
-	return &m, nil
-}

@@ -31,6 +31,7 @@ func Run(opts Options) error {
 
 	locator := preset.NewLocator()
 	proc := preset.NewOutputProcessor()
+	manifest, _ := config.ReadManifest()
 
 	scope, err := resolveScope(st, opts.PresetIDs)
 	if err != nil {
@@ -43,7 +44,7 @@ func Run(opts Options) error {
 
 	var totalDeployed int
 	for _, id := range scope {
-		deployed, err := regeneratePreset(id, locator, proc)
+		deployed, err := regeneratePreset(id, locator, proc, manifest)
 		if err != nil {
 			ui.Warn("generate failed", "preset", id, "error", err)
 			continue
@@ -63,6 +64,11 @@ func Run(opts Options) error {
 			totalDeployed++
 			ui.Ok("concat " + g.Target)
 		}
+	}
+
+	// Generate init scripts
+	if err := GenerateInitScripts(); err != nil {
+		ui.Warn("init script generation failed", "error", err)
 	}
 
 	ui.Ok(fmt.Sprintf("generated %d output(s)", totalDeployed))
@@ -92,7 +98,7 @@ func resolveScope(st *state.State, filterIDs []string) ([]string, error) {
 	return filterIDs, nil
 }
 
-func regeneratePreset(id string, locator *preset.Locator, proc *preset.OutputProcessor) (int, error) {
+func regeneratePreset(id string, locator *preset.Locator, proc *preset.OutputProcessor, manifest *config.Manifest) (int, error) {
 	dir, err := locator.Resolve(id)
 	if err != nil {
 		return 0, fmt.Errorf("resolve %s: %w", id, err)
@@ -103,7 +109,14 @@ func regeneratePreset(id string, locator *preset.Locator, proc *preset.OutputPro
 		return 0, fmt.Errorf("load %s: %w", id, err)
 	}
 
-	tplData := buildTemplateData(p.Config)
+	cfg := p.Config
+	if manifest != nil && manifest.PresetConfig != nil {
+		if overrides, ok := manifest.PresetConfig[id]; ok {
+			cfg = preset.MergeConfig(p.Config, overrides)
+		}
+	}
+
+	tplData := buildTemplateData(cfg)
 	deployed, err := proc.DeployAll(p.Outputs, dir, tplData)
 	if err != nil {
 		return 0, err

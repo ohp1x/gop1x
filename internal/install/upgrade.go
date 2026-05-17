@@ -2,7 +2,6 @@ package install
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/ohp1x/gop1x/internal/preset"
 	"github.com/ohp1x/gop1x/internal/state"
 	"github.com/ohp1x/gop1x/internal/ui"
-	"gopkg.in/yaml.v3"
 )
 
 type UpgradeOptions struct {
@@ -39,7 +37,11 @@ func RunUpgrade(opts UpgradeOptions) error {
 	}
 
 	locator := preset.NewLocator()
-	presetConfig := readUpgradePresetConfig()
+	m, _ := config.ReadManifest()
+	var presetConfig map[string]map[string]string
+	if m != nil {
+		presetConfig = m.PresetConfig
+	}
 
 	plan, err := computeUpgradePlan(st, locator, presetConfig, opts)
 	if err != nil {
@@ -78,7 +80,7 @@ func RunUpgrade(opts UpgradeOptions) error {
 		dir, _ := locator.Resolve(id)
 		p, _ := locator.LoadPreset(id)
 
-		mergedConfig := mergeUpgradeConfig(id, p.Config, presetConfig)
+		mergedConfig := mergeManifestConfigByID(id, p, presetConfig)
 		p.Config = mergedConfig
 
 		installedBy := "dependency"
@@ -161,7 +163,7 @@ func computeUpgradePlan(st *state.State, locator *preset.Locator, presetConfig m
 			plan.UpToDate = append(plan.UpToDate, id)
 			continue
 		}
-		merged := mergeUpgradeConfig(id, p.Config, presetConfig)
+		merged := mergeManifestConfigByID(id, p, presetConfig)
 		cHash, _ := preset.ConfigHash(merged)
 		if cHash != ps.ConfigHash {
 			plan.Reinstall = append(plan.Reinstall, id)
@@ -205,28 +207,3 @@ func displayUpgradePlan(plan *UpgradePlan) {
 	ui.Print("")
 }
 
-func readUpgradePresetConfig() map[string]map[string]string {
-	manifestPath := filepath.Join(config.Home(), "ohp1x.yaml")
-	data, err := os.ReadFile(manifestPath)
-	if err != nil {
-		return nil
-	}
-	var m struct {
-		PresetConfig map[string]map[string]string `yaml:"preset_config"`
-	}
-	if err := yaml.Unmarshal(data, &m); err != nil {
-		return nil
-	}
-	return m.PresetConfig
-}
-
-func mergeUpgradeConfig(id string, defaults map[string]string, presetConfig map[string]map[string]string) map[string]string {
-	if presetConfig == nil {
-		return defaults
-	}
-	overrides, ok := presetConfig[id]
-	if !ok {
-		return defaults
-	}
-	return preset.MergeConfig(defaults, overrides)
-}

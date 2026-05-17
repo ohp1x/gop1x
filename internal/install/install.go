@@ -108,6 +108,9 @@ func Run(opts Options) error {
 	// Install each preset in topological order
 	proc := preset.NewOutputProcessor()
 	allUserIDs := append(append([]string{}, opts.PresetIDs...), selected...)
+
+	manifest, _ := config.ReadManifest()
+
 	for _, id := range plan.Order {
 		if contains(plan.Skipped, id) {
 			ui.Info("skip (up-to-date)", "preset", id)
@@ -116,6 +119,12 @@ func Run(opts Options) error {
 
 		dir, _ := locator.Resolve(id)
 		p, _ := locator.LoadPreset(id)
+
+		if manifest != nil && manifest.PresetConfig != nil {
+			if overrides, ok := manifest.PresetConfig[id]; ok {
+				p.Config = preset.MergeConfig(p.Config, overrides)
+			}
+		}
 
 		installedBy := "dependency"
 		if contains(allUserIDs, id) {
