@@ -17,6 +17,10 @@ type Runner struct {
 	Verbose bool
 }
 
+func isRoot() bool {
+	return os.Geteuid() == 0
+}
+
 type Result struct {
 	Command  string
 	Args     []string
@@ -105,6 +109,38 @@ func (r *Runner) RunWithSpinner(label, name string, args ...string) *Result {
 			res.ExitCode = 1
 		}
 		res.Err = fmt.Errorf("%s failed (exit %d): %s", name, res.ExitCode, res.Stderr)
+	}
+
+	return res
+}
+
+func (r *Runner) RunElevated(label, name string, args ...string) *Result {
+	if isRoot() {
+		return r.RunWithSpinner(label, name, args...)
+	}
+	sudoArgs := append([]string{name}, args...)
+	res := &Result{Command: "sudo", Args: sudoArgs}
+
+	if r.DryRun {
+		return res
+	}
+
+	start := time.Now()
+	cmd := exec.Command("sudo", sudoArgs...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	res.Duration = time.Since(start)
+
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			res.ExitCode = exitErr.ExitCode()
+		} else {
+			res.ExitCode = 1
+		}
+		res.Err = fmt.Errorf("sudo %s failed (exit %d)", name, res.ExitCode)
 	}
 
 	return res

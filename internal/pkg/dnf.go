@@ -22,7 +22,7 @@ func (d *Dnf) Install(pkgs ...string) error {
 		return nil
 	}
 	args := append([]string{"install", "-y"}, pkgs...)
-	res := d.r.RunWithSpinner("dnf install", "dnf", args...)
+	res := d.r.RunElevated("dnf install", "dnf", args...)
 	return res.Err
 }
 
@@ -31,7 +31,7 @@ func (d *Dnf) Uninstall(pkgs ...string) error {
 		return nil
 	}
 	args := append([]string{"remove", "-y"}, pkgs...)
-	res := d.r.RunWithSpinner("dnf remove", "dnf", args...)
+	res := d.r.RunElevated("dnf remove", "dnf", args...)
 	return res.Err
 }
 

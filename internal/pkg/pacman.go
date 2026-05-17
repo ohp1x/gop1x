@@ -22,7 +22,7 @@ func (p *Pacman) Install(pkgs ...string) error {
 		return nil
 	}
 	args := append([]string{"-S", "--noconfirm"}, pkgs...)
-	res := p.r.RunWithSpinner("pacman install", "pacman", args...)
+	res := p.r.RunElevated("pacman install", "pacman", args...)
 	return res.Err
 }
 
@@ -31,7 +31,7 @@ func (p *Pacman) Uninstall(pkgs ...string) error {
 		return nil
 	}
 	args := append([]string{"-Rs", "--noconfirm"}, pkgs...)
-	res := p.r.RunWithSpinner("pacman remove", "pacman", args...)
+	res := p.r.RunElevated("pacman remove", "pacman", args...)
 	return res.Err
 }
 

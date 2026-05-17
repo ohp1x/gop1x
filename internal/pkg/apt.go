@@ -22,7 +22,7 @@ func (a *Apt) Install(pkgs ...string) error {
 		return nil
 	}
 	args := append([]string{"install", "-y"}, pkgs...)
-	res := a.r.RunWithSpinner("apt install", "apt", args...)
+	res := a.r.RunElevated("apt install", "apt", args...)
 	return res.Err
 }
 
@@ -31,7 +31,7 @@ func (a *Apt) Uninstall(pkgs ...string) error {
 		return nil
 	}
 	args := append([]string{"remove", "-y"}, pkgs...)
-	res := a.r.RunWithSpinner("apt remove", "apt", args...)
+	res := a.r.RunElevated("apt remove", "apt", args...)
 	return res.Err
 }
 

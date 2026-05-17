@@ -22,7 +22,7 @@ func (a *Apk) Install(pkgs ...string) error {
 		return nil
 	}
 	args := append([]string{"add"}, pkgs...)
-	res := a.r.RunWithSpinner("apk add", "apk", args...)
+	res := a.r.RunElevated("apk add", "apk", args...)
 	return res.Err
 }
 
@@ -31,7 +31,7 @@ func (a *Apk) Uninstall(pkgs ...string) error {
 		return nil
 	}
 	args := append([]string{"del"}, pkgs...)
-	res := a.r.RunWithSpinner("apk del", "apk", args...)
+	res := a.r.RunElevated("apk del", "apk", args...)
 	return res.Err
 }
 
