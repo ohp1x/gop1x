@@ -1,10 +1,12 @@
 package pkg
 
 type MockManager struct {
-	AvailableTrue bool
-	InstalledMap  map[string]bool
-	InstallCalls  [][]string
-	InstallErr    error
+	AvailableTrue  bool
+	InstalledMap   map[string]bool
+	InstallCalls   [][]string
+	InstallErr     error
+	UninstallCalls [][]string
+	UninstallErr   error
 }
 
 func (m *MockManager) Name() string { return "mock" }
@@ -21,4 +23,9 @@ func (m *MockManager) IsInstalled(pkg string) bool {
 func (m *MockManager) Install(pkgs ...string) error {
 	m.InstallCalls = append(m.InstallCalls, pkgs)
 	return m.InstallErr
+}
+
+func (m *MockManager) Uninstall(pkgs ...string) error {
+	m.UninstallCalls = append(m.UninstallCalls, pkgs)
+	return m.UninstallErr
 }

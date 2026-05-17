@@ -128,9 +128,9 @@ func RunRemove(opts RemoveOptions) error {
 	// Remove orphan packages
 	if removeOrphanPkgs && opts.PkgManager != nil && len(orphanPkgs) > 0 {
 		ui.Info("removing orphan packages", "packages", orphanPkgs)
-		// Note: PackageManager interface doesn't have Uninstall yet
-		// This is a placeholder for future implementation
-		ui.Warn("package removal not yet implemented in PackageManager interface")
+		if err := opts.PkgManager.Uninstall(orphanPkgs...); err != nil {
+			ui.Warn("package uninstall failed", "error", err)
+		}
 	}
 
 	// Write state
