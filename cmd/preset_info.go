@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/ohp1x/gop1x/internal/config"
@@ -76,7 +75,7 @@ var presetInfoCmd = &cobra.Command{
 			ui.Printf("Installed:   %s\n", ps.InstalledAt.Format("2006-01-02 15:04"))
 			ui.Printf("Installed by: %s\n", ps.InstalledBy)
 		} else {
-			fmt.Println("Status:      not installed")
+			ui.Print("Status:      not installed")
 		}
 	},
 }
