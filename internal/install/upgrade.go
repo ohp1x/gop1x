@@ -61,7 +61,7 @@ func RunUpgrade(opts UpgradeOptions) error {
 	}
 
 	if !opts.Yes {
-		if !confirm("Proceed with upgrade?") {
+		if !ui.Confirm("Proceed with upgrade?") {
 			ui.Info("cancelled")
 			return nil
 		}

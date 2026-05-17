@@ -57,7 +57,7 @@ func promptRecommends(entries []RecommendEntry, yes bool) []string {
 			label = fmt.Sprintf("%s — %s", e.ID, e.Description)
 		}
 		ui.Printf("\nRecommended (optional):\n  ? %s\n\n", label)
-		if confirm("Install recommended?") {
+		if ui.Confirm("Install recommended?") {
 			return []string{e.ID}
 		}
 		return nil

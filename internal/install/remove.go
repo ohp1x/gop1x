@@ -85,7 +85,7 @@ func RunRemove(opts RemoveOptions) error {
 	}
 
 	if !opts.Yes {
-		if !confirm("Proceed with removal?") {
+		if !ui.Confirm("Proceed with removal?") {
 			ui.Info("cancelled")
 			return nil
 		}
@@ -97,7 +97,7 @@ func RunRemove(opts RemoveOptions) error {
 		if opts.Yes {
 			removeOrphans = false
 		} else {
-			removeOrphans = confirm(fmt.Sprintf("Also remove orphan dependencies %v?", orphanDeps))
+			removeOrphans = ui.Confirm(fmt.Sprintf("Also remove orphan dependencies %v?", orphanDeps))
 		}
 	}
 
@@ -107,7 +107,7 @@ func RunRemove(opts RemoveOptions) error {
 		if opts.Yes {
 			removeOrphanPkgs = false
 		} else {
-			removeOrphanPkgs = confirm(fmt.Sprintf("Also remove orphan packages %v?", orphanPkgs))
+			removeOrphanPkgs = ui.Confirm(fmt.Sprintf("Also remove orphan packages %v?", orphanPkgs))
 		}
 	}
 

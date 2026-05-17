@@ -1,7 +1,6 @@
 package install
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -99,7 +98,7 @@ func Run(opts Options) error {
 
 	// Confirm
 	if !opts.Yes {
-		if !confirm("Proceed with installation?") {
+		if !ui.Confirm("Proceed with installation?") {
 			ui.Info("cancelled")
 			return nil
 		}
@@ -409,16 +408,6 @@ func runShell(command, dir string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
-}
-
-func confirm(prompt string) bool {
-	ui.Printf("%s [y/N] ", prompt)
-	scanner := bufio.NewScanner(os.Stdin)
-	if scanner.Scan() {
-		answer := strings.TrimSpace(strings.ToLower(scanner.Text()))
-		return answer == "y" || answer == "yes"
-	}
-	return false
 }
 
 func contains(slice []string, item string) bool {
