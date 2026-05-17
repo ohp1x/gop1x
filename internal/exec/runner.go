@@ -2,15 +2,20 @@ package exec
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+const gracefulTimeout = 5 * time.Second
 
 type Runner struct {
 	DryRun  bool
@@ -22,13 +27,14 @@ func isRoot() bool {
 }
 
 type Result struct {
-	Command  string
-	Args     []string
-	Stdout   string
-	Stderr   string
-	ExitCode int
-	Duration time.Duration
-	Err      error
+	Command    string
+	Args       []string
+	Stdout     string
+	Stderr     string
+	ExitCode   int
+	Duration   time.Duration
+	Err        error
+	Cancelled  bool
 }
 
 func (r *Runner) Run(name string, args ...string) *Result {
@@ -40,7 +46,11 @@ func (r *Runner) Run(name string, args ...string) *Result {
 
 	start := time.Now()
 
-	cmd := exec.Command(name, args...)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	var stdout, stderr bytes.Buffer
 
 	if r.Verbose {
@@ -51,18 +61,41 @@ func (r *Runner) Run(name string, args ...string) *Result {
 		cmd.Stderr = &stderr
 	}
 
-	err := cmd.Run()
-	res.Duration = time.Since(start)
-	res.Stdout = stdout.String()
-	res.Stderr = stderr.String()
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
 
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			res.ExitCode = exitErr.ExitCode()
-		} else {
-			res.ExitCode = 1
+	errCh := make(chan error, 1)
+	if err := cmd.Start(); err != nil {
+		res.ExitCode = 1
+		res.Err = fmt.Errorf("%s: %w", name, err)
+		return res
+	}
+
+	go func() { errCh <- cmd.Wait() }()
+
+	select {
+	case err := <-errCh:
+		res.Duration = time.Since(start)
+		res.Stdout = stdout.String()
+		res.Stderr = stderr.String()
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				res.ExitCode = exitErr.ExitCode()
+			} else {
+				res.ExitCode = 1
+			}
+			res.Err = fmt.Errorf("%s failed (exit %d): %s", name, res.ExitCode, res.Stderr)
 		}
-		res.Err = fmt.Errorf("%s failed (exit %d): %s", name, res.ExitCode, res.Stderr)
+	case <-sigCh:
+		res.Cancelled = true
+		r.terminateProcess(cmd)
+		<-errCh
+		res.Duration = time.Since(start)
+		res.Stdout = stdout.String()
+		res.Stderr = stderr.String()
+		res.ExitCode = 130
+		res.Err = fmt.Errorf("%s: interrupted", name)
 	}
 
 	return res
@@ -90,25 +123,54 @@ func (r *Runner) RunWithSpinner(label, name string, args ...string) *Result {
 	}()
 
 	start := time.Now()
-	cmd := exec.Command(name, args...)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
-	close(done)
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
 
-	res.Duration = time.Since(start)
-	res.Stdout = stdout.String()
-	res.Stderr = stderr.String()
+	errCh := make(chan error, 1)
+	if err := cmd.Start(); err != nil {
+		close(done)
+		res.ExitCode = 1
+		res.Err = fmt.Errorf("%s: %w", name, err)
+		return res
+	}
 
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			res.ExitCode = exitErr.ExitCode()
-		} else {
-			res.ExitCode = 1
+	go func() { errCh <- cmd.Wait() }()
+
+	select {
+	case err := <-errCh:
+		close(done)
+		res.Duration = time.Since(start)
+		res.Stdout = stdout.String()
+		res.Stderr = stderr.String()
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				res.ExitCode = exitErr.ExitCode()
+			} else {
+				res.ExitCode = 1
+			}
+			res.Err = fmt.Errorf("%s failed (exit %d): %s", name, res.ExitCode, res.Stderr)
 		}
-		res.Err = fmt.Errorf("%s failed (exit %d): %s", name, res.ExitCode, res.Stderr)
+	case <-sigCh:
+		close(done)
+		res.Cancelled = true
+		r.terminateProcess(cmd)
+		<-errCh
+		res.Duration = time.Since(start)
+		res.Stdout = stdout.String()
+		res.Stderr = stderr.String()
+		res.ExitCode = 130
+		res.Err = fmt.Errorf("%s: interrupted", name)
 	}
 
 	return res
@@ -126,24 +188,79 @@ func (r *Runner) RunElevated(label, name string, args ...string) *Result {
 	}
 
 	start := time.Now()
-	cmd := exec.Command("sudo", sudoArgs...)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "sudo", sudoArgs...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	err := cmd.Run()
-	res.Duration = time.Since(start)
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
 
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			res.ExitCode = exitErr.ExitCode()
-		} else {
-			res.ExitCode = 1
+	errCh := make(chan error, 1)
+	if err := cmd.Start(); err != nil {
+		res.ExitCode = 1
+		res.Err = fmt.Errorf("sudo %s: %w", name, err)
+		return res
+	}
+
+	go func() { errCh <- cmd.Wait() }()
+
+	select {
+	case err := <-errCh:
+		res.Duration = time.Since(start)
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				res.ExitCode = exitErr.ExitCode()
+			} else {
+				res.ExitCode = 1
+			}
+			res.Err = fmt.Errorf("sudo %s failed (exit %d)", name, res.ExitCode)
 		}
-		res.Err = fmt.Errorf("sudo %s failed (exit %d)", name, res.ExitCode)
+	case <-sigCh:
+		res.Cancelled = true
+		r.terminateProcess(cmd)
+		<-errCh
+		res.Duration = time.Since(start)
+		res.ExitCode = 130
+		res.Err = fmt.Errorf("sudo %s: interrupted", name)
 	}
 
 	return res
+}
+
+func (r *Runner) terminateProcess(cmd *exec.Cmd) {
+	if cmd.Process == nil {
+		return
+	}
+	pgid, err := syscall.Getpgid(cmd.Process.Pid)
+	if err == nil {
+		syscall.Kill(-pgid, syscall.SIGTERM)
+	} else {
+		cmd.Process.Signal(syscall.SIGTERM)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		cmd.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(gracefulTimeout):
+		if pgid, err := syscall.Getpgid(cmd.Process.Pid); err == nil {
+			syscall.Kill(-pgid, syscall.SIGKILL)
+		} else {
+			cmd.Process.Kill()
+		}
+		<-done
+	}
 }
 
 type spinnerModel struct {
