@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ohp1x/gop1x/internal/config"
+	"github.com/ohp1x/gop1x/internal/preset"
 	"github.com/ohp1x/gop1x/internal/ui"
 	"gopkg.in/yaml.v3"
 )
@@ -80,6 +81,12 @@ func Run(opts InitOptions) error {
 	// Initialize git repo
 	if err := initGitRepo(homeDir); err != nil {
 		return fmt.Errorf("failed to initialize git repo: %w", err)
+	}
+
+	// Auto-clone presets repository
+	cloner := preset.NewPresetsCloner()
+	if err := cloner.EnsureCloned(); err != nil {
+		ui.Warn("Failed to clone presets (you can clone manually later)", "error", err)
 	}
 
 	printNextSteps(homeDir)

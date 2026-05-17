@@ -31,6 +31,12 @@ func (l *Locator) Resolve(id string) (string, error) {
 		return localPath, nil
 	}
 
+	// Check in official presets subdirectory (ohp1x/)
+	officialPath := filepath.Join(l.LocalDir, OfficialPresetsDir, id)
+	if info, err := os.Stat(officialPath); err == nil && info.IsDir() {
+		return officialPath, nil
+	}
+
 	return "", fmt.Errorf("preset %q not found in %s or %s", id, l.UserDir, l.LocalDir)
 }
 
@@ -57,6 +63,7 @@ func (l *Locator) ListAll() ([]LocatedPreset, error) {
 	}{
 		{l.UserDir, "user"},
 		{l.LocalDir, "official"},
+		{filepath.Join(l.LocalDir, OfficialPresetsDir), "official"},
 	} {
 		presets, err := walkPresets(entry.dir, entry.source)
 		if err != nil {
