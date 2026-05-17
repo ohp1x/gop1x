@@ -73,6 +73,25 @@ func Run(opts Options) error {
 	// Display plan
 	displayPlan(plan, opts.PresetIDs)
 
+	// Collect and prompt recommends
+	recommends := collectRecommends(opts.PresetIDs, plan.Order, locator, st)
+	selected := promptRecommends(recommends, opts.Yes || opts.DryRun)
+	if len(selected) > 0 {
+		expanded := append(append([]string{}, opts.PresetIDs...), selected...)
+		order, err = preset.ResolveOrderMulti(expanded, loadFn)
+		if err != nil {
+			return err
+		}
+		plan, err = computePlan(order, locator, st, opts.PkgManager)
+		if err != nil {
+			return err
+		}
+		if err := checkConflicts(order, locator, st); err != nil {
+			return err
+		}
+		displayPlan(plan, expanded)
+	}
+
 	if opts.DryRun {
 		ui.Info("dry-run: no changes made")
 		return nil
@@ -88,6 +107,7 @@ func Run(opts Options) error {
 
 	// Install each preset in topological order
 	proc := preset.NewOutputProcessor()
+	allUserIDs := append(append([]string{}, opts.PresetIDs...), selected...)
 	for _, id := range plan.Order {
 		if contains(plan.Skipped, id) {
 			ui.Info("skip (up-to-date)", "preset", id)
@@ -98,7 +118,7 @@ func Run(opts Options) error {
 		p, _ := locator.LoadPreset(id)
 
 		installedBy := "dependency"
-		if contains(opts.PresetIDs, id) {
+		if contains(allUserIDs, id) {
 			installedBy = "user"
 		}
 
@@ -127,7 +147,7 @@ func Run(opts Options) error {
 
 	// Save to manifest
 	if !opts.NoSave {
-		if err := saveToManifest(opts.PresetIDs); err != nil {
+		if err := saveToManifest(allUserIDs); err != nil {
 			ui.Warn("failed to save to manifest", "error", err)
 		}
 	}
