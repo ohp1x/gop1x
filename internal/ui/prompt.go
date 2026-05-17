@@ -1,17 +1,24 @@
 package ui
 
 import (
+	"errors"
+
 	"github.com/charmbracelet/huh"
 )
 
-func Confirm(prompt string) bool {
+var ErrAborted = errors.New("aborted")
+
+func Confirm(prompt string) (bool, error) {
 	confirmed := false
 	err := huh.NewConfirm().
 		Title(prompt).
 		Value(&confirmed).
 		Run()
-	if err != nil {
-		return false
+	if errors.Is(err, huh.ErrUserAborted) {
+		return false, ErrAborted
 	}
-	return confirmed
+	if err != nil {
+		return false, nil
+	}
+	return confirmed, nil
 }

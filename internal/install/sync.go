@@ -61,7 +61,9 @@ func RunSync(opts SyncOptions) error {
 	}
 
 	if !opts.Yes {
-		if !ui.Confirm("Proceed?") {
+		if ok, err := ui.Confirm("Proceed?"); err != nil {
+			return err
+		} else if !ok {
 			ui.Info("cancelled")
 			return nil
 		}

@@ -74,7 +74,10 @@ func Run(opts Options) error {
 
 	// Collect and prompt recommends
 	recommends := collectRecommends(opts.PresetIDs, plan.Order, locator, st)
-	selected := promptRecommends(recommends, opts.Yes || opts.DryRun)
+	selected, err := promptRecommends(recommends, opts.Yes || opts.DryRun)
+	if err != nil {
+		return err
+	}
 	if len(selected) > 0 {
 		expanded := append(append([]string{}, opts.PresetIDs...), selected...)
 		order, err = preset.ResolveOrderMulti(expanded, loadFn)
@@ -98,7 +101,9 @@ func Run(opts Options) error {
 
 	// Confirm
 	if !opts.Yes {
-		if !ui.Confirm("Proceed with installation?") {
+		if ok, err := ui.Confirm("Proceed with installation?"); err != nil {
+			return err
+		} else if !ok {
 			ui.Info("cancelled")
 			return nil
 		}

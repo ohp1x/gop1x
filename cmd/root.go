@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
@@ -23,6 +25,13 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigCh
+		os.Exit(130)
+	}()
+
 	if err := rootCmd.Execute(); err != nil {
 		ui.Error(err.Error())
 		os.Exit(1)

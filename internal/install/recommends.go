@@ -1,6 +1,7 @@
 package install
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/huh"
@@ -45,9 +46,9 @@ func collectRecommends(rootIDs []string, order []string, locator *preset.Locator
 	return entries
 }
 
-func promptRecommends(entries []RecommendEntry, yes bool) []string {
+func promptRecommends(entries []RecommendEntry, yes bool) ([]string, error) {
 	if yes || len(entries) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	if len(entries) == 1 {
@@ -57,10 +58,12 @@ func promptRecommends(entries []RecommendEntry, yes bool) []string {
 			label = fmt.Sprintf("%s — %s", e.ID, e.Description)
 		}
 		ui.Printf("\nRecommended (optional):\n  ? %s\n\n", label)
-		if ui.Confirm("Install recommended?") {
-			return []string{e.ID}
+		if ok, err := ui.Confirm("Install recommended?"); err != nil {
+			return nil, err
+		} else if !ok {
+			return nil, nil
 		}
-		return nil
+		return []string{e.ID}, nil
 	}
 
 	ui.Print("\nRecommended (optional):")
@@ -83,7 +86,10 @@ func promptRecommends(entries []RecommendEntry, yes bool) []string {
 		),
 	)
 	if err := form.Run(); err != nil {
-		return nil
+		if errors.Is(err, huh.ErrUserAborted) {
+			return nil, ui.ErrAborted
+		}
+		return nil, nil
 	}
-	return selected
+	return selected, nil
 }
